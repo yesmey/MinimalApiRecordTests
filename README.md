@@ -1,2 +1,2 @@
 # MinimalApiRecordTests
-Playing around with some new c# features
+Playing around with some dotnet features
