@@ -5,8 +5,8 @@ namespace MinimalApiRecordTests;
 public record UserLookupResult
 {
     private UserLookupResult() { }
-    public record Found(User User) : UserLookupResult;
-    public record FoundMany(User[] Users) : UserLookupResult;
+    public record FoundOne(User User) : UserLookupResult;
+    public record FoundMany(IReadOnlyList<User> Users) : UserLookupResult;
     public record NotFound() : UserLookupResult;
     public record Error(string ErrorMessage, Exception? Exception = null) : UserLookupResult;
 }
@@ -22,7 +22,7 @@ public class UserLookupService
         {
             return _userRepository.GetUser(id) switch
             {
-                { Length: 1 } users => new Found(users[0]),
+                { Length: 1 } users => new FoundOne(users[0]),
                 { Length: > 1 } => new Error("Duplicate item found"),
                 { } => new NotFound()
             };
@@ -42,7 +42,7 @@ public class UserLookupService
 
             return _userRepository.FindUserByName(firstName, lastName) switch
             {
-                { Length: 1 } users => new Found(users[0]),
+                { Length: 1 } users => new FoundOne(users[0]),
                 { Length: > 1 } users => new FoundMany(users),
                 { } => new NotFound(),
                 null => new Error("Invalid search criteria")
@@ -66,7 +66,7 @@ public static class UserLookupServiceExtensions
         {
             return userService.FindUser(id) switch
             {
-                Found { User: var user } => Results.Ok(user),
+                FoundOne { User: var user } => Results.Ok(user),
                 NotFound => Results.NotFound(),
                 Error error => Results.BadRequest(error.ErrorMessage),
                 { } or null => Results.StatusCode(StatusCodes.Status501NotImplemented)
@@ -77,7 +77,7 @@ public static class UserLookupServiceExtensions
         {
             return userService.SearchUser(firstName, lastName) switch
             {
-                Found { User: var user } => Results.Ok(user),
+                FoundOne { User: var user } => Results.Ok(user),
                 FoundMany { Users: var users } => Results.Ok(users),
                 NotFound => Results.NotFound(),
                 Error error => Results.BadRequest(error.ErrorMessage),

@@ -13,18 +13,18 @@ public class UserRepository
         .Where(x => x.Count() > 1)
         .Select(x => x.First());
 
-    internal User[] GetUser(int id)
+    internal ImmutableArray<User> GetUser(int id)
     {
-        return _users.Where(x => x.Id == id).ToArray();
+        return _users.Where(x => x.Id == id).ToImmutableArray();
     }
 
-    internal User[]? FindUserByName(string? firstName, string? lastName)
+    internal ImmutableArray<User>? FindUserByName(string? firstName, string? lastName)
     {
         return (string.IsNullOrEmpty(firstName), string.IsNullOrEmpty(lastName)) switch
         {
-            (false, false) => _users.Where(x => x.FirstName == firstName && x.LastName == lastName).ToArray(),
-            (false, true) => _users.Where(x => x.FirstName == firstName).ToArray(),
-            (true, false) => _users.Where(x => x.LastName == lastName).ToArray(),
+            (false, false) => _users.Where(x => x.FirstName == firstName && x.LastName == lastName).ToImmutableArray(),
+            (false, true) => _users.Where(x => x.FirstName == firstName).ToImmutableArray(),
+            (true, false) => _users.Where(x => x.LastName == lastName).ToImmutableArray(),
             (true, true) => null
         };
     }
