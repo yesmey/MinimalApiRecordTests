@@ -1,8 +1,10 @@
-﻿namespace MinimalApiRecordTests;
+﻿using System.Collections.Immutable;
+
+namespace MinimalApiRecordTests;
 
 public class UserRepository
 {
-    private readonly User[] _users = GenerateUsers();
+    private readonly ImmutableArray<User> _users = GenerateUsers();
 
     public IEnumerable<User> AllUsers => _users;
 
@@ -16,14 +18,29 @@ public class UserRepository
         return _users.SingleOrDefault(x => x.Id == id);
     }
 
-    private static User[] GenerateUsers()
+    internal User[]? FindUserByName(string? firstName, string? lastName)
     {
-        var firstNames = new[] { "Willian", "Noah", "Alice", "Hugo", "Liam", "Alma" };
-        var lastNames = new[] { "Andersson", "Johansson", "Karlsson", "Nilsson", "Eriksson", "Olsson", "Persson" };
+        return (string.IsNullOrEmpty(firstName), string.IsNullOrEmpty(lastName)) switch
+        {
+            (false, false) => _users.Where(x => x.FirstName == firstName && x.LastName == lastName).ToArray(),
+            (false, true) => _users.Where(x => x.FirstName == firstName).ToArray(),
+            (true, false) => _users.Where(x => x.LastName == lastName).ToArray(),
+            (true, true) => null
+        };
+    }
+
+    private static ImmutableArray<User> GenerateUsers()
+    {
         int id = 1;
-        return firstNames
-            .SelectMany(firstName => lastNames.Select(lastName => new User(id++, firstName, lastName)))
-            .Append(new User(id, "Duplicate", "Duplicate"))
-            .ToArray();
+
+        var builder = ImmutableArray.CreateBuilder<User>();
+        foreach (var firstName in new[] { "William", "Noah", "Alice", "Hugo", "Liam", "Alma" })
+        {
+            foreach (var lastName in new[] { "Andersson", "Johansson", "Karlsson", "Nilsson", "Eriksson", "Olsson", "Persson" })
+                builder.Add(new(id++, firstName, lastName));
+        }
+        builder.Add(new(id, "Duplicate", "Duplicate"));
+        builder.Add(new(id, "Duplicate", "Duplicate"));
+        return builder.ToImmutable();
     }
 }
