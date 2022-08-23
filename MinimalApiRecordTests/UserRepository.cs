@@ -13,9 +13,9 @@ public class UserRepository
         .Where(x => x.Count() > 1)
         .Select(x => x.First());
 
-    internal User? GetUser(int id)
+    internal User[] GetUser(int id)
     {
-        return _users.SingleOrDefault(x => x.Id == id);
+        return _users.Where(x => x.Id == id).ToArray();
     }
 
     internal User[]? FindUserByName(string? firstName, string? lastName)

@@ -6,7 +6,7 @@ public record UserLookupResult
 {
     private UserLookupResult() { }
     public record Found(User User) : UserLookupResult;
-    public record FoundAny(User[] Users) : UserLookupResult;
+    public record FoundMany(User[] Users) : UserLookupResult;
     public record NotFound() : UserLookupResult;
     public record Error(string ErrorMessage, Exception? Exception = null) : UserLookupResult;
 }
@@ -20,15 +20,15 @@ public class UserLookupService
     {
         try
         {
-            if (_userRepository.GetUser(id) is { } user)
-                return new Found(user);
-
-            return new NotFound();
+            return _userRepository.GetUser(id) switch
+            {
+                { Length: 1 } users => new Found(users[0]),
+                { Length: > 1 } => new Error("Duplicate item found"),
+                { } => new NotFound()
+            };
         }
         catch (Exception ex)
         {
-            if (ex is InvalidOperationException)
-                return new Error("Found duplicate", ex);
             return new Error("Unknown error", ex);
         }
     }
@@ -43,7 +43,7 @@ public class UserLookupService
             return _userRepository.FindUserByName(firstName, lastName) switch
             {
                 { Length: 1 } users => new Found(users[0]),
-                { Length: > 0 } users => new FoundAny(users),
+                { Length: > 1 } users => new FoundMany(users),
                 { } => new NotFound(),
                 null => new Error("Invalid search criteria")
             };
@@ -78,7 +78,7 @@ public static class UserLookupServiceExtensions
             return userService.SearchUser(firstName, lastName) switch
             {
                 Found { User: var user } => Results.Ok(user),
-                FoundAny { Users: var users } => Results.Ok(users),
+                FoundMany { Users: var users } => Results.Ok(users),
                 NotFound => Results.NotFound(),
                 Error error => Results.BadRequest(error.ErrorMessage),
                 { } or null => Results.StatusCode(StatusCodes.Status501NotImplemented)
