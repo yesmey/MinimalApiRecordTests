@@ -1,21 +1,41 @@
-using MinimalApiRecordTests;
+using Microsoft.EntityFrameworkCore;
+using MinimalApiRecordTests.Data;
+using MinimalApiRecordTests.Data.Compiled;
+using MinimalApiRecordTests.Data.Model;
+using MinimalApiRecordTests.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<UserRepository>();
-builder.Services.AddSingleton<UserLookupService>();
+builder.Services.AddDbContextPool<DataContext>(o => o.UseModel(DataContextModel.Instance).UseSqlite(@"Data Source=test.db"));
+
+builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<UserLookupService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.MapGet("/users", (UserRepository repository) => repository.AllUsers).WithName("AllUsers");
-app.MapGet("/users/duplicates", (UserRepository repository) => repository.DuplicateUsers).WithName("GetDuplicates");
+app.MapPost("/data/fill/{numberOfUsers}", async (DataContext context, int numberOfUsers) =>
+{
+    var firstNames = new[] { "William", "Noah", "Alice", "Hugo", "Liam", "Alma" };
+    var lastNames = new[] { "Andersson", "Johansson", "Karlsson", "Nilsson", "Eriksson", "Olsson", "Persson" };
+
+    await context.Database.EnsureDeletedAsync();
+    await context.Database.EnsureCreatedAsync();
+    context.Users.AddRange(Enumerable.Range(1, numberOfUsers).Select(i => new UserData
+    {
+        Id = i,
+        FirstName = firstNames[Random.Shared.Next(firstNames.Length)],
+        LastName = lastNames[Random.Shared.Next(lastNames.Length)]
+    }));
+    await context.SaveChangesAsync();
+});
+app.MapGet("/users", (UserRepository repository, CancellationToken cancellationToken) => repository.GetAll(cancellationToken)).WithName("AllUsers");
+app.MapGet("/users/duplicates", (UserRepository repository, CancellationToken cancellationToken) => repository.GetDuplicateUsers(cancellationToken)).WithName("GetDuplicates");
 app.MapUserLookupEndpoints();
 
 app.Run();

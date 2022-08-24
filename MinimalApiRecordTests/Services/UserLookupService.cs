@@ -1,7 +1,10 @@
-﻿using static MinimalApiRecordTests.UserLookupResult;
+﻿using MinimalApiRecordTests.Data;
+using MinimalApiRecordTests.Model;
+using static MinimalApiRecordTests.Services.UserLookupResult;
 
-namespace MinimalApiRecordTests;
+namespace MinimalApiRecordTests.Services;
 
+// Poor man's discriminated union :)
 public record UserLookupResult
 {
     private UserLookupResult() { }
@@ -16,14 +19,14 @@ public class UserLookupService
     private readonly UserRepository _userRepository;
     public UserLookupService(UserRepository userRepository) => _userRepository = userRepository;
 
-    public UserLookupResult FindUser(int id)
+    public async Task<UserLookupResult> FindUser(int id, CancellationToken cancellationToken = default)
     {
         try
         {
-            return _userRepository.GetUser(id) switch
+            return await _userRepository.GetUser(id, cancellationToken) switch
             {
-                { Length: 1 } users => new FoundOne(users[0]),
-                { Length: > 1 } => new Error("Duplicate item found"),
+                { Count: 1 } users => new FoundOne(users[0]),
+                { Count: > 1 } => new Error("Duplicate item found"),
                 { } => new NotFound()
             };
         }
@@ -33,17 +36,17 @@ public class UserLookupService
         }
     }
 
-    public UserLookupResult SearchUser(string? firstName, string? lastName)
+    public async Task<UserLookupResult> SearchUser(string? firstName, string? lastName, CancellationToken cancellationToken = default)
     {
         try
         {
             firstName = firstName?.Trim();
             lastName = lastName?.Trim();
 
-            return _userRepository.FindUserByName(firstName, lastName) switch
+            return await _userRepository.FindUserByName(firstName, lastName, cancellationToken) switch
             {
-                { Length: 1 } users => new FoundOne(users[0]),
-                { Length: > 1 } users => new FoundMany(users),
+                { Count: 1 } users => new FoundOne(users[0]),
+                { Count: > 1 } users => new FoundMany(users),
                 { } => new NotFound(),
                 null => new Error("Invalid search criteria")
             };
@@ -62,20 +65,17 @@ public static class UserLookupServiceExtensions
         app.MapGet("/users/{id}", GetUser).WithName(nameof(GetUser));
         app.MapGet("/users/search", SearchUser).WithName(nameof(SearchUser));
 
-        static IResult GetUser(UserLookupService userService, int id)
-        {
-            return userService.FindUser(id) switch
+        static async Task<IResult> GetUser(int id, UserLookupService userService, CancellationToken cancellationToken) =>
+            await userService.FindUser(id, cancellationToken) switch
             {
                 FoundOne { User: var user } => Results.Ok(user),
                 NotFound => Results.NotFound(),
                 Error error => Results.BadRequest(error.ErrorMessage),
                 { } or null => Results.StatusCode(StatusCodes.Status501NotImplemented)
             };
-        }
 
-        static IResult SearchUser(UserLookupService userService, string? firstName, string? lastName)
-        {
-            return userService.SearchUser(firstName, lastName) switch
+        static async Task<IResult> SearchUser(string? firstName, string? lastName, UserLookupService userService, CancellationToken cancellationToken) =>
+            await userService.SearchUser(firstName, lastName, cancellationToken) switch
             {
                 FoundOne { User: var user } => Results.Ok(user),
                 FoundMany { Users: var users } => Results.Ok(users),
@@ -83,6 +83,5 @@ public static class UserLookupServiceExtensions
                 Error error => Results.BadRequest(error.ErrorMessage),
                 { } or null => Results.StatusCode(StatusCodes.Status501NotImplemented)
             };
-        }
     }
 }
