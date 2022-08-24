@@ -3,6 +3,7 @@ using MinimalApiRecordTests.Data;
 using MinimalApiRecordTests.Data.Compiled;
 using MinimalApiRecordTests.Data.Model;
 using MinimalApiRecordTests.Services;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,7 @@ builder.Services.AddDbContextPool<DataContext>(o => o.UseModel(DataContextModel.
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<UserLookupService>();
+builder.Services.AddScoped<UserLookupService2>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddProblemDetails();
@@ -36,5 +38,12 @@ app.MapPost("/data/seed/{numberOfUsers}", async (DataContext context, int number
 });
 
 app.MapUserLookupEndpoints();
+
+// invoke static MapEndpoints on all IService, just a hacky way to test
+_ = AppDomain.CurrentDomain.GetAssemblies()
+    .SelectMany(assembly => assembly.GetTypes())
+    .Where(type => typeof(IService).IsAssignableFrom(type) && type.IsClass)
+    .Select(x => x.GetMethod(nameof(IService.MapEndpoints), BindingFlags.Public | BindingFlags.Static).Invoke(null, new[] { app } ))
+    .ToArray();
 
 app.Run();
