@@ -1,4 +1,4 @@
-﻿namespace MinimalApiRecordTests.Model;
+﻿namespace MinimalApiRecordTests.Models;
 
 public class User
 {

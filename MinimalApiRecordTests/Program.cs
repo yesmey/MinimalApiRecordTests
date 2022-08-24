@@ -6,7 +6,7 @@ using MinimalApiRecordTests.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContextPool<DataContext>(o => o.UseModel(DataContextModel.Instance).UseSqlite(@"Data Source=test.db"));
+builder.Services.AddDbContextPool<DataContext>(o => o.UseModel(DataContextModel.Instance).UseSqlite("Data Source=test.db"));
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<UserLookupService>();
@@ -19,7 +19,7 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.MapPost("/data/fill/{numberOfUsers}", async (DataContext context, int numberOfUsers) =>
+app.MapPost("/data/seed/{numberOfUsers}", async (DataContext context, int numberOfUsers) =>
 {
     var firstNames = new[] { "William", "Noah", "Alice", "Hugo", "Liam", "Alma" };
     var lastNames = new[] { "Andersson", "Johansson", "Karlsson", "Nilsson", "Eriksson", "Olsson", "Persson" };
@@ -34,8 +34,7 @@ app.MapPost("/data/fill/{numberOfUsers}", async (DataContext context, int number
     }));
     await context.SaveChangesAsync();
 });
-app.MapGet("/users", (UserRepository repository, CancellationToken cancellationToken) => repository.GetAll(cancellationToken)).WithName("AllUsers");
-app.MapGet("/users/duplicates", (UserRepository repository, CancellationToken cancellationToken) => repository.GetDuplicateUsers(cancellationToken)).WithName("GetDuplicates");
+
 app.MapUserLookupEndpoints();
 
 app.Run();
