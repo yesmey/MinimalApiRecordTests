@@ -37,13 +37,7 @@ app.MapPost("/data/seed/{numberOfUsers}", async (DataContext context, int number
     await context.SaveChangesAsync();
 });
 
-app.MapUserLookupEndpoints();
-
-// invoke static MapEndpoints on all IService, just a hacky way to test
-_ = AppDomain.CurrentDomain.GetAssemblies()
-    .SelectMany(assembly => assembly.GetTypes())
-    .Where(type => typeof(IService).IsAssignableFrom(type) && type.IsClass)
-    .Select(x => x.GetMethod(nameof(IService.MapEndpoints), BindingFlags.Public | BindingFlags.Static).Invoke(null, new[] { app } ))
-    .ToArray();
+//app.MapUserLookupEndpoints();
+app.MapServiceEndpoints();
 
 app.Run();
